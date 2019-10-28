@@ -589,3 +589,32 @@ sys_waitx(void)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+
+int
+getpinfo(struct proc_stat *x)
+{
+  
+  struct proc *p;
+  int i;
+  i = 0;
+  // lock the process table
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state == UNUSED)
+    {
+      // x->inuse[i] = 0;
+    }
+    else
+    {
+      // x->inuse[i] = 1;
+    }
+    x[i].pid = p->pid;
+    x[i].runtime = (float)p->rtime;
+    // x->hticks[i] = p->high_tick;
+    // x->lticks[i] = p->low_tick;
+    ++i;
+  }
+  release(&ptable.lock);
+  return 0;
+}
