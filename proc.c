@@ -250,6 +250,8 @@ exit(void)
   end_op();
   curproc->cwd = 0;
 
+  curproc->etime = ticks; // End Time
+
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
