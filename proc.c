@@ -432,6 +432,9 @@ scheduler(void)
 	// It should have changed its p->state before coming back.
 	c->proc = 0;
     there3:
+  #else
+  #ifdef MLFQ
+  #endif
   #endif
   #endif
   #endif
