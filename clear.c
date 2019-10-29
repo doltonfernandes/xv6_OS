@@ -16,4 +16,5 @@ main(void)
 {
 	clear();
 	exit();
+	return 0;
 }

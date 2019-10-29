@@ -94,9 +94,7 @@ found:
 
   p->ctime = ticks;
   p->rtime = 0;
-  p->priority = 60;
-  // set_priority(0);
-  // set_priority(60);
+  set_priority(60);
 
   release(&ptable.lock);
 
@@ -706,8 +704,11 @@ int
 set_priority(int x)
 {
   struct proc *curproc=myproc();
-  cprintf("%s %d\n",curproc->name,curproc->priority);
-  int return_value = curproc->priority;
+  if(curproc == 0)
+  {
+  	return -1;
+  }
+  int return_value = curproc->priority;;
   curproc->priority = x;
   return return_value;
 }
