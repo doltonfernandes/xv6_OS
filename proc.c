@@ -92,6 +92,7 @@ found:
 
   p->ctime = ticks;
   p->rtime = 0;
+  p->priority = 60;
 
   release(&ptable.lock);
 
@@ -328,17 +329,19 @@ wait(void)
 void
 scheduler(void)
 {
-  struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    struct proc *p;
+  #ifdef DEFAULT
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
       if(p->state != RUNNABLE)
         continue;
 
@@ -356,6 +359,45 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
+
+  #else
+  #ifdef FCFS
+    int mini=1e9,process_found=0;
+    struct proc *p2;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if(p->state == RUNNABLE)
+      {
+        if(mini>p->ctime)
+        {
+          mini=p->ctime;
+          p2=p;
+        }
+        process_found=1;
+      }
+
+    }
+    if(!process_found)
+    {
+      goto there2;
+    }
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      c->proc = p2;
+      switchuvm(p2);
+      p2->state = RUNNING;
+
+      swtch(&(c->scheduler), p2->context);
+      switchkvm();
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+    there2:
+  #endif
+  #endif
+
     release(&ptable.lock);
 
   }
@@ -617,5 +659,11 @@ getpinfo(struct proc_stat *x)
     ++i;
   }
   release(&ptable.lock);
+  return 0;
+}
+
+int
+set_priority(int x)
+{
   return 0;
 }
