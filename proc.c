@@ -21,6 +21,8 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+int set_priority(int);
+
 void
 pinit(void)
 {
@@ -93,6 +95,8 @@ found:
   p->ctime = ticks;
   p->rtime = 0;
   p->priority = 60;
+  // set_priority(0);
+  // set_priority(60);
 
   release(&ptable.lock);
 
@@ -381,20 +385,56 @@ scheduler(void)
     {
       goto there2;
     }
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p2;
-      switchuvm(p2);
-      p2->state = RUNNING;
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    c->proc = p2;
+    switchuvm(p2);
+    p2->state = RUNNING;
 
-      swtch(&(c->scheduler), p2->context);
-      switchkvm();
+    swtch(&(c->scheduler), p2->context);
+    switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
     there2:
+  #else
+  #ifdef PBS
+    int mini=1e9,process_found=0;
+    struct proc *p2;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if(p->state == RUNNABLE)
+      {
+        if(mini>p->priority)
+        {
+          mini=p->priority;
+          p2=p;
+        }
+        process_found=1;
+      }
+
+    }
+    if(!process_found)
+    {
+      goto there3;
+    }
+	// Switch to chosen process.  It is the process's job
+	// to release ptable.lock and then reacquire it
+	// before jumping back to us.
+	c->proc = p2;
+	switchuvm(p2);
+	p2->state = RUNNING;
+
+	swtch(&(c->scheduler), p2->context);
+	switchkvm();
+
+	// Process is done running for now.
+	// It should have changed its p->state before coming back.
+	c->proc = 0;
+    there3:
+  #endif
   #endif
   #endif
 
@@ -665,5 +705,9 @@ getpinfo(struct proc_stat *x)
 int
 set_priority(int x)
 {
-  return 0;
+  struct proc *curproc=myproc();
+  cprintf("%s %d\n",curproc->name,curproc->priority);
+  int return_value = curproc->priority;
+  curproc->priority = x;
+  return return_value;
 }
