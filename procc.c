@@ -10,7 +10,8 @@
 
 struct {
   struct spinlock lock;
-  struct proc proc[5][NPROC];
+  struct proc proc[NPROC];
+  struct proc queue[NPROC];
 } ptable;
 
 static struct proc *initproc;
@@ -81,16 +82,7 @@ allocproc(void)
 
   acquire(&ptable.lock);
 
-  #ifdef MLFQ
-
-  for(p = &ptable.proc[0][NPROC]-1; p >= ptable.proc[0]; p--)  	
-
-  #else
-
-  for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)  	
-
-  #endif
-
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
 
@@ -103,13 +95,6 @@ found:
 
   p->ctime = ticks;
   p->rtime = 0;
-  p->current_queue = 1;
-  p->num_run=0;
-  for(int i=0;i<5;i++)
-  {
-  	p->ticks[i]=0;
-  }
-
   set_priority(60);
 
   release(&ptable.lock);
@@ -278,11 +263,7 @@ exit(void)
   wakeup1(curproc->parent);
 
   // Pass abandoned children to init.
-  int i=0;
-  #ifdef MLFQ
-  for(;i<5;i++)
-  #endif
-  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
       p->parent = initproc;
       if(p->state == ZOMBIE)
@@ -309,11 +290,7 @@ wait(void)
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
-    int i=0;
-    #ifdef MLFQ
-    for(;i<5;i++)
-    #endif
-    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
       havekids = 1;
@@ -366,7 +343,7 @@ scheduler(void)
     struct proc *p;
   #ifdef DEFAULT
 
-    for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if(p->state != RUNNABLE)
         continue;
@@ -393,7 +370,7 @@ scheduler(void)
 
     // Find process with least creation time
 
-    for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if(p->state == RUNNABLE)
       {
@@ -431,7 +408,7 @@ scheduler(void)
 
     // Find process with highest priority
 
-    for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if(p->state == RUNNABLE)
       {
@@ -464,23 +441,20 @@ scheduler(void)
     there3:
   #else
   #ifdef MLFQ
-    int i=0;
-    for(;i<5;i++)
-    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
-    {
-      if(p->state != RUNNABLE)
-        continue;
+    // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    // {
+    //   if(p->state != RUNNABLE)
+    //     continue;
 
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      p->num_run++;
+    //   c->proc = p;
+    //   switchuvm(p);
+    //   p->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+    //   swtch(&(c->scheduler), p->context);
+    //   switchkvm();
 
-      c->proc = 0;
-    }
+    //   c->proc = 0;
+    // }
   #endif
   #endif
   #endif
@@ -595,11 +569,7 @@ wakeup1(void *chan)
 {
   struct proc *p;
 
-  int i=0;
-  #ifdef MLFQ
-  for(;i<5;i++)
-  #endif
-  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
       p->state = RUNNABLE;
 }
@@ -622,11 +592,7 @@ kill(int pid)
   struct proc *p;
 
   acquire(&ptable.lock);
-  int i=0;
-  #ifdef MLFQ
-  for(;i<5;i++)
-  #endif
-  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
@@ -660,11 +626,7 @@ procdump(void)
   char *state;
   uint pc[10];
 
-  int j=0;
-  #ifdef MLFQ
-  for(;j<5;i++)
-  #endif
-  for(p = ptable.proc[j]; p < &ptable.proc[j][NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
@@ -696,11 +658,7 @@ sys_waitx(void)
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
-    int i=0;
-	#ifdef MLFQ
-	for(;i<5;i++)
-	#endif
-	for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
       havekids = 1;
@@ -746,11 +704,7 @@ getpinfo(struct proc_stat *x)
   i = 0;
   // lock the process table
   acquire(&ptable.lock);
-  int j=0;
-  #ifdef MLFQ
-  for(;j<5;i++)
-  #endif
-  for(p = ptable.proc[j]; p < &ptable.proc[j][NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
     if(p->state == UNUSED)
     {
