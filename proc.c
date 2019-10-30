@@ -452,30 +452,77 @@ scheduler(void)
     there3:
   #else
   #ifdef MLFQ
-    int i=0,onetick=100,l=1;
-    for(;i<5;i++,l*=2)
+
+    int onetick=100,l=1;
+    for(int i=0;i<4;i++,l*=2)
     {
+		int mini=1e9,process_found=0;
+	    struct proc *p2,*p3;
+
+	    p2=p3=0;
 	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
 	    {
-	      if(p->state == RUNNING && p->ticks[i] > onetick*l)
+	      if(p->state == RUNNING && p->ticks[i] > onetick*l && i!=4)
 	      {
-	      	// to be done
+	      	for(p3 = &ptable.proc[i+1][NPROC] - 1; p3 >= ptable.proc[i+1] ; p3--)
+	      	{
+	      		if(p3->state == UNUSED)
+	      		{
+	      			break;
+	      		}
+	      	}
+	      	*p3=*p;
+	      	p3->current_queue++;
+	        p->pid = 0;
+	        p->parent = 0;
+	        p->name[0] = 0;
+	        p->killed = 0;
+	        p->state = UNUSED;
 	      }
-
-	      if(p->state != RUNNABLE)
-	        continue;
-
-	      c->proc = p;
-	      switchuvm(p);
-	      p->state = RUNNING;
-	      p->num_run++;
-
-	      swtch(&(c->scheduler), p->context);
-	      switchkvm();
-
-	      c->proc = 0;
+	      if(p->state == RUNNABLE)
+	      {
+	        if(mini>p->priority)
+	        {
+	          mini=p->priority;
+	          p2=p;
+	        }
+	        process_found=1;
+	      }
 	    }
+	    if(!process_found)
+	    {
+	      continue;
+	    }
+		c->proc = p2;
+		switchuvm(p2);
+		p2->state = RUNNING;
+
+		swtch(&(c->scheduler), p2->context);
+		switchkvm();
+
+		c->proc = 0;
 	}
+
+	for(p = ptable.proc[4]; p < &ptable.proc[4][NPROC]; p++)
+    {
+      if(p->state != RUNNABLE)
+        continue;
+
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+    }
+
   #endif
   #endif
   #endif
@@ -780,7 +827,7 @@ void update_runtime()
     if(p->state == RUNNING)
     {
     	p->rtime++;
-    	p->ticks[p->current_queue]++;
+    	p->ticks[p->current_queue-1]++;
     }
   }
   release(&ptable.lock);
