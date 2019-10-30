@@ -3,7 +3,7 @@
 #include "user.h"
 
 int
-main(void)
+main(int argc,char *argv[])
 {
 	// struct proc_stat *a=(struct proc_stat *)malloc(NPROC*sizeof(struct proc_stat));
 	// getpinfo();
@@ -18,14 +18,15 @@ main(void)
 		if(pid1==0)
 		{
 			printf(1,"Hello from the insideeeeeeeeee......\n");
+			exec(argv[1],argv+1);
 			exit();
 		}
 		else
 		{
-			wait();
-			// int x1,y1;
-			// waitx(&x1,&y1);
-			// printf(1,"%d %d\n",x1,y1);
+			// wait();
+			int x1,y1;
+			waitx(&x1,&y1);
+			printf(1,"%d %d\n",x1,y1);
 		}
 	// }
 	exit();

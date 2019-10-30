@@ -21,8 +21,6 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
-int set_priority(int);
-
 void
 pinit(void)
 {
@@ -102,9 +100,8 @@ found:
   p->pid = nextpid++;
 
   p->ctime = ticks;
-  p->rtime = 0;
+  p->rtime = p->etime = p->num_run = 0;
   p->current_queue = 1;
-  p->num_run=0;
   for(int i=0;i<5;i++)
   {
   	p->ticks[i]=0;
@@ -357,6 +354,7 @@ scheduler(void)
 {
   struct cpu *c = mycpu();
   c->proc = 0;
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -410,9 +408,6 @@ scheduler(void)
     {
       goto there2;
     }
-    // Switch to chosen process.  It is the process's job
-    // to release ptable.lock and then reacquire it
-    // before jumping back to us.
     c->proc = p2;
     switchuvm(p2);
     p2->state = RUNNING;
@@ -420,8 +415,6 @@ scheduler(void)
     swtch(&(c->scheduler), p2->context);
     switchkvm();
 
-    // Process is done running for now.
-    // It should have changed its p->state before coming back.
     c->proc = 0;
     there2:
   #else
@@ -448,9 +441,6 @@ scheduler(void)
     {
       goto there3;
     }
-	// Switch to chosen process.  It is the process's job
-	// to release ptable.lock and then reacquire it
-	// before jumping back to us.
 	c->proc = p2;
 	switchuvm(p2);
 	p2->state = RUNNING;
@@ -458,29 +448,34 @@ scheduler(void)
 	swtch(&(c->scheduler), p2->context);
 	switchkvm();
 
-	// Process is done running for now.
-	// It should have changed its p->state before coming back.
 	c->proc = 0;
     there3:
   #else
   #ifdef MLFQ
-    int i=0;
-    for(;i<5;i++)
-    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+    int i=0,onetick=100,l=1;
+    for(;i<5;i++,l*=2)
     {
-      if(p->state != RUNNABLE)
-        continue;
+	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+	    {
+	      if(p->state == RUNNING && p->ticks[i] > onetick*l)
+	      {
+	      	// to be done
+	      }
 
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      p->num_run++;
+	      if(p->state != RUNNABLE)
+	        continue;
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+	      c->proc = p;
+	      switchuvm(p);
+	      p->state = RUNNING;
+	      p->num_run++;
 
-      c->proc = 0;
-    }
+	      swtch(&(c->scheduler), p->context);
+	      switchkvm();
+
+	      c->proc = 0;
+	    }
+	}
   #endif
   #endif
   #endif
@@ -682,12 +677,8 @@ procdump(void)
 }
 
 int
-sys_waitx(void)
+waitx(int *wtime,int *rtime)
 {
-  int *wtime,*rtime;
-  argptr(0,(void*)&wtime,sizeof(*wtime));
-  argptr(1,(void*)&rtime,sizeof(*rtime));
-
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
@@ -718,8 +709,6 @@ sys_waitx(void)
 
         *wtime = p->etime - p->ctime - p->rtime; // Waiting Time = End Time - Creation Time - Run Time
         *rtime = p->rtime;                       // Run time
-
-        p->ctime = p->etime = p->rtime = 0; // Reinitialise
 
         release(&ptable.lock);
         return pid;
@@ -754,11 +743,7 @@ getpinfo(struct proc_stat *x)
   {
     if(p->state == UNUSED)
     {
-      // x->inuse[i] = 0;
-    }
-    else
-    {
-      // x->inuse[i] = 1;
+    	continue;
     }
     x[i].pid = p->pid;
     x[i].runtime = (float)p->rtime;
@@ -781,4 +766,22 @@ set_priority(int x)
   int return_value = curproc->priority;;
   curproc->priority = x;
   return return_value;
+}
+
+void update_runtime()
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+  int i=0;
+  #ifdef MLFQ
+  for(;i<5;i++)
+  #endif
+  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+    if(p->state == RUNNING)
+    {
+    	p->rtime++;
+    	p->ticks[p->current_queue]++;
+    }
+  }
+  release(&ptable.lock);
 }
