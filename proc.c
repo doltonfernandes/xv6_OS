@@ -776,15 +776,13 @@ waitx(int *wtime,int *rtime)
 int
 getpinfo(struct proc_stat *x)
 {
-  
   struct proc *p;
-  int i;
-  i = 0;
+  int i = 0;
   // lock the process table
   acquire(&ptable.lock);
   int j=0;
   #ifdef MLFQ
-  for(;j<5;i++)
+  for(;j<5;j++)
   #endif
   for(p = ptable.proc[j]; p < &ptable.proc[j][NPROC]; p++)
   {
@@ -793,13 +791,17 @@ getpinfo(struct proc_stat *x)
     	continue;
     }
     x[i].pid = p->pid;
-    x[i].runtime = (float)p->rtime;
-    // x->hticks[i] = p->high_tick;
-    // x->lticks[i] = p->low_tick;
+    x[i].runtime = p->rtime;
+    x[i].num_run = p->num_run;
+    x[i].current_queue = p->current_queue;
+    for(int k=0;k<5;k++)
+    {
+    	x[i].ticks[k] = p->ticks[k];
+    }
     ++i;
   }
   release(&ptable.lock);
-  return 0;
+  return i;
 }
 
 int
