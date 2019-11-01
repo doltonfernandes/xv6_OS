@@ -219,7 +219,6 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
@@ -372,6 +371,7 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+      p->num_run++;
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -408,6 +408,7 @@ scheduler(void)
     {
       goto there2;
     }
+    p2->num_run++;
     c->proc = p2;
     switchuvm(p2);
     p2->state = RUNNING;
@@ -441,6 +442,7 @@ scheduler(void)
     {
       goto there3;
     }
+    p2->num_run++;
 	c->proc = p2;
 	switchuvm(p2);
 	p2->state = RUNNING;
@@ -462,7 +464,7 @@ scheduler(void)
 	    p2=p3=0;
 	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
 	    {
-	      if(p->state == RUNNING && p->ticks[i] > onetick*l && i!=4)
+	      if(p->state == RUNNING && p->ticks[i] >= onetick*l && i!=4)
 	      {
 	      	for(p3 = &ptable.proc[i+1][NPROC] - 1; p3 >= ptable.proc[i+1] ; p3--)
 	      	{
@@ -493,6 +495,7 @@ scheduler(void)
 	    {
 	      continue;
 	    }
+	    p2->num_run++;
 		c->proc = p2;
 		switchuvm(p2);
 		p2->state = RUNNING;
@@ -511,6 +514,7 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+      p->num_run++;
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
