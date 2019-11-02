@@ -79,16 +79,8 @@ allocproc(void)
 
   acquire(&ptable.lock);
 
-  #ifdef MLFQ
-
-  for(p = &ptable.proc[0][NPROC]-1; p >= ptable.proc[0]; p--)  	
-
-  #else
-
-  for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)  	
-
-  #endif
-
+  for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
+  	
     if(p->state == UNUSED)
       goto found;
 
@@ -697,7 +689,7 @@ procdump(void)
   [UNUSED]    "unused",
   [EMBRYO]    "embryo",
   [SLEEPING]  "sleep ",
-  [RUNNABLE]  "runble",
+  [RUNNABLE]  "runable",
   [RUNNING]   "run   ",
   [ZOMBIE]    "zombie"
   };
@@ -708,7 +700,7 @@ procdump(void)
 
   int j=0;
   #ifdef MLFQ
-  for(;j<5;i++)
+  for(;j<5;j++)
   #endif
   for(p = ptable.proc[j]; p < &ptable.proc[j][NPROC]; p++){
     if(p->state == UNUSED)
@@ -778,34 +770,41 @@ waitx(int *wtime,int *rtime)
 }
 
 int
-getpinfo(struct proc_stat *x)
+getpinfo(struct proc_stat *x,int pid)
 {
-  struct proc *p;
-  int i = 0;
-  // lock the process table
-  acquire(&ptable.lock);
-  int j=0;
+  struct proc *p=0;
+  int i = 0,f=1;
   #ifdef MLFQ
-  for(;j<5;j++)
+  for(;i<5 && f;i++)
   #endif
-  for(p = ptable.proc[j]; p < &ptable.proc[j][NPROC]; p++)
+  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
   {
-    if(p->state == UNUSED)
+  	if(p->state != UNUSED)
+    if(pid == p->pid)
     {
-    	continue;
+      f=0;
+      break;
     }
-    x[i].pid = p->pid;
-    x[i].runtime = p->rtime;
-    x[i].num_run = p->num_run;
-    x[i].current_queue = p->current_queue;
-    for(int k=0;k<5;k++)
-    {
-    	x[i].ticks[k] = p->ticks[k];
-    }
-    ++i;
   }
+
+  if(f)
+  {
+  	return -1;
+  }
+
+  acquire(&ptable.lock);
+  
+  x->pid = pid;
+  x->runtime = p->rtime;
+  x->num_run = p->num_run;
+  x->current_queue = p->current_queue;
+  for(int i=0;i<5;i++)
+  {
+  	x->ticks[i] = p->ticks[i];
+  }
+
   release(&ptable.lock);
-  return i;
+  return 1;
 }
 
 int

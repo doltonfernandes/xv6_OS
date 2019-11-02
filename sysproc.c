@@ -113,5 +113,10 @@ sys_getpinfo(void)
   if(argptr(0, (char**)&p, sizeof(struct proc_stat)) < 0)
     return -1;
 
-  return getpinfo(p);
+  int n;
+
+  if(argint(1, &n) < 0)
+    return -1;
+
+  return getpinfo(p,n);
 }
