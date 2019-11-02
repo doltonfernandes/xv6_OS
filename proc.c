@@ -464,9 +464,18 @@ scheduler(void)
 	      		{
 	      			break;
 	      		}
+	      		if(p3 == ptable.proc[i+1])
+	      		{
+			      	p3 = &ptable.proc[i+1][NPROC];
+	      		}
 	      	}
-	      	*p3=*p;
-	      	p3->current_queue++;
+	      	*p3 = *p;
+	      	p3->current_queue ++;
+	        p3->killed = 1;
+			if(p3->state == SLEEPING)
+			{
+				p3->state = RUNNABLE;
+			}
 	        p->pid = 0;
 	        p->parent = 0;
 	        p->name[0] = 0;
