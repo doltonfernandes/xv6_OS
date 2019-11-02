@@ -6,11 +6,7 @@
 int
 main(int argc,char *argv[])
 {
-	while(1)
-	{
-		volatile int x = 1;
-		x++;
-	}
+	sleep(11*100);
 	exit();
 	return 0;
 }

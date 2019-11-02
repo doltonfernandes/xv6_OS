@@ -464,10 +464,6 @@ scheduler(void)
 	      		{
 	      			break;
 	      		}
-	      		if(p3 == ptable.proc[i+1])
-	      		{
-			      	p3 = &ptable.proc[i+1][NPROC];
-	      		}
 	      	}
 	      	*p3 = *p;
 	      	p3->current_queue ++;
