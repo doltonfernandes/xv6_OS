@@ -840,5 +840,19 @@ void update_runtime()
     	p->ticks[p->current_queue-1]++;
     }
   }
+  if(ticks%100==0)
+  {
+    i = 0;
+    #ifdef MLFQ
+    for(;i<5;i++)
+    #endif
+    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+    {
+      if(p->state==RUNNING)
+      {
+        cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
+      }
+    }
+  }
   release(&ptable.lock);
 }
