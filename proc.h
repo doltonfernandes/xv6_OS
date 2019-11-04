@@ -55,6 +55,7 @@ struct proc {
   int current_queue;           // Queue on which the process is
   int num_run;                 // Number of times the process was executed
   int ticks[5];                // Number of ticks the process has received at each of the 5 priority queue
+  int arrival_time,time_spent;
 };
 
 // Process memory is laid out contiguously, low addresses first:

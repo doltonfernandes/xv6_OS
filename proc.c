@@ -91,8 +91,8 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
-  p->ctime = ticks;
-  p->rtime = p->etime = p->num_run = 0;
+  p->ctime = p->arrival_time = ticks;
+  p->rtime = p->etime = p->time_spent = p->num_run = 0;
   p->current_queue = 1;
   for(int i=0;i<5;i++)
   {
@@ -448,7 +448,7 @@ scheduler(void)
   #ifdef MLFQ
 
     int onetick=50;
-    // int max_time_in_a_queue = 50;
+    int max_time_in_a_queue = 50;
     for(int i=0;i<5;i++,onetick*=2)
     {
     	int mini=1e9,process_found=0;
@@ -468,7 +468,6 @@ scheduler(void)
 	        }
 	        process_found=1;
 	      }
-
 	    }
 	    if(!process_found)
 	    {
@@ -493,6 +492,8 @@ scheduler(void)
 				}
 			}
 			*p = *p2;
+			p->arrival_time = ticks;
+			p->time_spent = 0;
 			p->current_queue++;
 			p2->pid = 0;
 	        p2->parent = 0;
@@ -500,6 +501,40 @@ scheduler(void)
 	        p2->killed = 0;
 	        p2->kstack = 0;
 			p2->state = UNUSED;
+		}
+		if(i>0)
+		{
+			for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+		    {
+		    	if(p->state == RUNNABLE)
+		    	{
+		    		if(ticks - p->arrival_time - p->time_spent > max_time_in_a_queue)
+		    		{
+						for(p2 = ptable.proc[i-1]; p2 < &ptable.proc[i-1][NPROC]; p2++)
+						{
+							if(p2->state == UNUSED)
+							{
+								break;
+							}
+						}
+						*p2 = *p;
+						p2->current_queue--;
+						p2->priority--;
+						if(p2->priority<0)
+						{
+							p2->priority=0;
+						}
+						p2->arrival_time = ticks;
+						p2->time_spent = 0;
+						p->pid = 0;
+				        p->parent = 0;
+				        p->name[0] = 0;
+				        p->killed = 0;
+				        p->kstack = 0;
+						p->state = UNUSED;
+		    		}
+		    	}
+		    }
 		}
 	}
   #endif
@@ -542,12 +577,10 @@ sched(void)
 void
 yield(void)
 {
-  #ifndef FCFS // To make FCFS non-preemptive
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
   sched();
   release(&ptable.lock);
-  #endif
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -813,17 +846,19 @@ void update_runtime()
   #ifdef MLFQ
   for(;i<5;i++)
   #endif
-  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+  {
     if(p->state == RUNNING)
     {
     	p->rtime++;
+    	p->time_spent++;
     	p->ticks[p->current_queue-1]++;
     }
   }
 
-  // For Bonus
+  // // For Bonus
 
-  // if(ticks%100==0)
+  // if(ticks%50==0)
   // {
   //   i = 0;
   //   #ifdef MLFQ
@@ -834,6 +869,7 @@ void update_runtime()
   //     if(p->state==RUNNING)
   //     {
   //       cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
+  //       // cprintf("%d %d\n",p->arrival_time,p->time_spent);
   //     }
   //   }
   // }
