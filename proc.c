@@ -363,10 +363,10 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      p->num_run++;
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      p->num_run++;
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -456,22 +456,18 @@ scheduler(void)
 	    p2=p3=0;
 	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
 	    {
-	      if(p->state == RUNNING && p->ticks[i] >= onetick*l && i!=4)
+	      if(p->state != UNUSED && p->ticks[i] >= onetick*l)
 	      {
-	      	for(p3 = &ptable.proc[i+1][NPROC] - 1; p3 >= ptable.proc[i+1] ; p3--)
+	      	for(p3 = ptable.proc[i+1]; p3 < &ptable.proc[i+1][NPROC] ; p3++)
 	      	{
 	      		if(p3->state == UNUSED)
 	      		{
 	      			break;
 	      		}
 	      	}
+          // p->state = RUNNABLE;
 	      	*p3 = *p;
-	      	p3->current_queue ++;
-	        p3->killed = 1;
-			if(p3->state == SLEEPING)
-			{
-				p3->state = RUNNABLE;
-			}
+	      	p3->current_queue++;
 	        p->pid = 0;
 	        p->parent = 0;
 	        p->name[0] = 0;
@@ -492,10 +488,12 @@ scheduler(void)
 	    {
 	      continue;
 	    }
+
 	    p2->num_run++;
-		c->proc = p2;
-		switchuvm(p2);
-		p2->state = RUNNING;
+
+  	c->proc = p2;
+  	switchuvm(p2);
+  	p2->state = RUNNING;
 
 		swtch(&(c->scheduler), p2->context);
 		switchkvm();
@@ -564,10 +562,12 @@ sched(void)
 void
 yield(void)
 {
+  #ifndef FCFS // To make FCFS non-preemptive
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
   sched();
   release(&ptable.lock);
+  #endif
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -840,19 +840,22 @@ void update_runtime()
     	p->ticks[p->current_queue-1]++;
     }
   }
-  if(ticks%100==0)
-  {
-    i = 0;
-    #ifdef MLFQ
-    for(;i<5;i++)
-    #endif
-    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
-    {
-      if(p->state==RUNNING)
-      {
-        cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
-      }
-    }
-  }
+
+  // For Bonus
+
+  // if(ticks%100==0)
+  // {
+  //   i = 0;
+  //   #ifdef MLFQ
+  //   for(;i<5;i++)
+  //   #endif
+  //   for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+  //   {
+  //     if(p->state==RUNNING)
+  //     {
+  //       cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
+  //     }
+  //   }
+  // }
   release(&ptable.lock);
 }
