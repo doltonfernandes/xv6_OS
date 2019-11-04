@@ -447,34 +447,19 @@ scheduler(void)
   #else
   #ifdef MLFQ
 
-    int onetick=100,l=1;
-    for(int i=0;i<4;i++,l*=2)
+    int onetick=50;
+    // int max_time_in_a_queue = 50;
+    for(int i=0;i<5;i++,onetick*=2)
     {
-		int mini=1e9,process_found=0;
-	    struct proc *p2,*p3;
+    	int mini=1e9,process_found=0;
+	    struct proc *p2;
+	    p2 = 0;
 
-	    p2=p3=0;
+	    // Find process with highest priority
+
 	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
 	    {
-	      if(p->state != UNUSED && p->ticks[i] >= onetick*l)
-	      {
-	      	for(p3 = ptable.proc[i+1]; p3 < &ptable.proc[i+1][NPROC] ; p3++)
-	      	{
-	      		if(p3->state == UNUSED)
-	      		{
-	      			break;
-	      		}
-	      	}
-          // p->state = RUNNABLE;
-	      	*p3 = *p;
-	      	p3->current_queue++;
-	        p->pid = 0;
-	        p->parent = 0;
-	        p->name[0] = 0;
-	        p->killed = 0;
-	        p->state = UNUSED;
-	      }
-	      if(p->state == RUNNABLE)
+	      if(p->state == RUNNABLE && (p->ticks[i] < onetick || i==4))
 	      {
 	        if(mini>p->priority)
 	        {
@@ -483,45 +468,40 @@ scheduler(void)
 	        }
 	        process_found=1;
 	      }
+
 	    }
 	    if(!process_found)
 	    {
-	      continue;
+	    	continue;
 	    }
-
 	    p2->num_run++;
-
-  	c->proc = p2;
-  	switchuvm(p2);
-  	p2->state = RUNNING;
+		c->proc = p2;
+		switchuvm(p2);
+		p2->state = RUNNING;
 
 		swtch(&(c->scheduler), p2->context);
 		switchkvm();
 
 		c->proc = 0;
+		if(p2->ticks[i] >= onetick && i<4)
+		{
+			for(p = ptable.proc[i+1]; p < &ptable.proc[i+1][NPROC]; p++)
+			{
+				if(p->state == UNUSED)
+				{
+					break;
+				}
+			}
+			*p = *p2;
+			p->current_queue++;
+			p2->pid = 0;
+	        p2->parent = 0;
+	        p2->name[0] = 0;
+	        p2->killed = 0;
+	        p2->kstack = 0;
+			p2->state = UNUSED;
+		}
 	}
-
-	for(p = ptable.proc[4]; p < &ptable.proc[4][NPROC]; p++)
-    {
-      if(p->state != RUNNABLE)
-        continue;
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      p->num_run++;
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
-
   #endif
   #endif
   #endif
