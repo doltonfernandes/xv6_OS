@@ -416,8 +416,7 @@ scheduler(void)
     there2:
   #else
   #ifdef PBS
-    int mini=1e9,process_found=0;
-    struct proc *p2;
+    int mini=1e9;
 
     // Find process with highest priority
 
@@ -428,57 +427,42 @@ scheduler(void)
         if(mini>p->priority)
         {
           mini=p->priority;
-          p2=p;
         }
-        process_found=1;
       }
-
     }
-    if(!process_found)
+    for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
     {
-      goto there3;
+      if(p->state == RUNNABLE && p->priority == mini)
+      {
+	    p->num_run++;
+		c->proc = p;
+		switchuvm(p);
+		p->state = RUNNING;
+
+		swtch(&(c->scheduler), p->context);
+		switchkvm();
+
+		c->proc = 0;
+      }
     }
-    p2->num_run++;
-	c->proc = p2;
-	switchuvm(p2);
-	p2->state = RUNNING;
-
-	swtch(&(c->scheduler), p2->context);
-	switchkvm();
-
-	c->proc = 0;
-    there3:
   #else
   #ifdef MLFQ
 
     int onetick=50;
-    int max_time_in_a_queue = 50;
+    int max_time_in_a_queue = 200;
     for(int i=0;i<5;i++,onetick*=2)
     {
-    	int mini=1e9,process_found=0;
-	    struct proc *p2;
-	    p2 = 0;
+    	int mini=1e9;
 
 	    // Find process with highest priority
 
 	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
 	    {
-	      if(p->state == RUNNABLE && (p->time_spent < onetick || i==4))
-	      {
-	        if(mini>p->priority)
-	        {
-	          mini=p->priority;
-	          p2=p;
-	        }
-	        process_found=1;
-	      }
-	      else
-	      {
-	      	if(p->state == RUNNABLE && i<4 && p->time_spent >= onetick)
+	    	if(p->state == RUNNABLE && ticks - p->arrival_time - p->time_spent > max_time_in_a_queue && i>0)
 	      	{
 	      		struct proc *p3;
 	      		int found = 0;
-			    for(p3 = ptable.proc[i+1]; p3 < &ptable.proc[i+1][NPROC]; p3++)
+			    for(p3 = ptable.proc[i-1]; p3 < &ptable.proc[i-1][NPROC]; p3++)
 			    {
 			    	if(p3->state == UNUSED)
 			    	{
@@ -490,24 +474,37 @@ scheduler(void)
 			    {
 			    	continue;
 			    }
-			    *p3 = *p;
-			    p3->arrival_time = ticks;
-				p3->time_spent = 0;
-				p3->current_queue++;
-				p->pid = 0;
+  			    *p3 = *p;
+  			    p3->arrival_time = ticks;
+      			p3->time_spent = 0;
+      			p3->current_queue--;
+      			if(p3->priority > 0)
+      			{
+      				p3->priority--;
+      			}
+      			p->pid = 0;
 		        p->parent = 0;
 		        p->name[0] = 0;
 		        p->killed = 0;
 		        p->kstack = 0;
-				p->state = UNUSED;
+		    		p->state = UNUSED;
 	      	}
-		    else
-		    {
-		    	if(p->state == RUNNABLE && ticks - p->arrival_time - p->time_spent > max_time_in_a_queue && i>0)
+	      	else
+	      	{
+		      if(p->state == RUNNABLE && (p->time_spent < onetick || i==4))
+		      {
+		        if(mini>p->priority)
+		        {
+		          mini=p->priority;
+		        }
+		      }
+		      else
+		      {
+		      	if(p->state == RUNNABLE && i<4 && p->time_spent >= onetick)
 		      	{
 		      		struct proc *p3;
 		      		int found = 0;
-				    for(p3 = ptable.proc[i-1]; p3 < &ptable.proc[i-1][NPROC]; p3++)
+				    for(p3 = ptable.proc[i+1]; p3 < &ptable.proc[i+1][NPROC]; p3++)
 				    {
 				    	if(p3->state == UNUSED)
 				    	{
@@ -519,33 +516,35 @@ scheduler(void)
 				    {
 				    	continue;
 				    }
-				    *p3 = *p;
-				    p3->arrival_time = ticks;
-					p3->time_spent = 0;
-					p3->current_queue--;
-					p->pid = 0;
+  				    *p3 = *p;
+  				    p3->arrival_time = ticks;
+    					p3->time_spent = 0;
+    					p3->current_queue++;
+    					p->pid = 0;
 			        p->parent = 0;
 			        p->name[0] = 0;
 			        p->killed = 0;
 			        p->kstack = 0;
-					p->state = UNUSED;
+				    	p->state = UNUSED;
 		      	}
-		    }
-	      }
+		      }
+			}
 	    }
-	    if(!process_found)
+	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
 	    {
-	    	continue;
+	    	if(p->state == RUNNABLE && mini == p->priority)
+	    	{
+			    p->num_run++;
+				c->proc = p;
+				switchuvm(p);
+				p->state = RUNNING;
+
+				swtch(&(c->scheduler),p->context);
+				switchkvm();
+
+				c->proc = 0;
+	    	}
 	    }
-	    p2->num_run++;
-		c->proc = p2;
-		switchuvm(p2);
-		p2->state = RUNNING;
-
-		swtch(&(c->scheduler), p2->context);
-		switchkvm();
-
-		c->proc = 0;
 	}
   #endif
   #endif
@@ -870,20 +869,20 @@ void update_runtime()
 
   // // For Bonus
 
-  // if(ticks%50==0)
-  // {
-  //   i = 0;
-  //   #ifdef MLFQ
-  //   for(;i<5;i++)
-  //   #endif
-  //   for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
-  //   {
-  //     if(p->state==RUNNING)
-  //     {
-  //       cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
-  //       // cprintf("%d %d\n",p->arrival_time,p->time_spent);
-  //     }
-  //   }
-  // }
+  if(ticks%50==0)
+  {
+    i = 0;
+    #ifdef MLFQ
+    for(;i<5;i++)
+    #endif
+    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+    {
+      if(p->state==RUNNING)
+      {
+        cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
+        // cprintf("%d %d\n",p->arrival_time,p->time_spent);
+      }
+    }
+  }
   release(&ptable.lock);
 }

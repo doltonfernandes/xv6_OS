@@ -120,3 +120,14 @@ sys_getpinfo(void)
 
   return getpinfo(p,n);
 }
+
+int
+sys_set_priority(void)
+{
+  int n;
+
+  if(argint(0, &n) < 0)
+    return -1;
+
+  return set_priority(n);
+}
