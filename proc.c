@@ -463,7 +463,7 @@ scheduler(void)
 
 	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
 	    {
-	      if(p->state == RUNNABLE && (p->ticks[i] < onetick || i==4))
+	      if(p->state == RUNNABLE && (p->time_spent < onetick || i==4))
 	      {
 	        if(mini>p->priority)
 	        {
@@ -471,6 +471,66 @@ scheduler(void)
 	          p2=p;
 	        }
 	        process_found=1;
+	      }
+	      else
+	      {
+	      	if(p->state == RUNNABLE && i<4 && p->time_spent >= onetick)
+	      	{
+	      		struct proc *p3;
+	      		int found = 0;
+			    for(p3 = ptable.proc[i+1]; p3 < &ptable.proc[i+1][NPROC]; p3++)
+			    {
+			    	if(p3->state == UNUSED)
+			    	{
+			    		found = 1;
+			    		break;
+			    	}
+			    }
+			    if(!found)
+			    {
+			    	continue;
+			    }
+			    *p3 = *p;
+			    p3->arrival_time = ticks;
+				p3->time_spent = 0;
+				p3->current_queue++;
+				p->pid = 0;
+		        p->parent = 0;
+		        p->name[0] = 0;
+		        p->killed = 0;
+		        p->kstack = 0;
+				p->state = UNUSED;
+	      	}
+		    else
+		    {
+		    	if(p->state == RUNNABLE && ticks - p->arrival_time - p->time_spent > max_time_in_a_queue && i>0)
+		      	{
+		      		struct proc *p3;
+		      		int found = 0;
+				    for(p3 = ptable.proc[i-1]; p3 < &ptable.proc[i-1][NPROC]; p3++)
+				    {
+				    	if(p3->state == UNUSED)
+				    	{
+				    		found = 1;
+				    		break;
+				    	}
+				    }
+				    if(!found)
+				    {
+				    	continue;
+				    }
+				    *p3 = *p;
+				    p3->arrival_time = ticks;
+					p3->time_spent = 0;
+					p3->current_queue--;
+					p->pid = 0;
+			        p->parent = 0;
+			        p->name[0] = 0;
+			        p->killed = 0;
+			        p->kstack = 0;
+					p->state = UNUSED;
+		      	}
+		    }
 	      }
 	    }
 	    if(!process_found)
@@ -486,60 +546,6 @@ scheduler(void)
 		switchkvm();
 
 		c->proc = 0;
-		if(p2->ticks[i] >= onetick && i<4)
-		{
-			for(p = ptable.proc[i+1]; p < &ptable.proc[i+1][NPROC]; p++)
-			{
-				if(p->state == UNUSED)
-				{
-					break;
-				}
-			}
-			*p = *p2;
-			p->arrival_time = ticks;
-			p->time_spent = 0;
-			p->current_queue++;
-			p2->pid = 0;
-	        p2->parent = 0;
-	        p2->name[0] = 0;
-	        p2->killed = 0;
-	        p2->kstack = 0;
-			p2->state = UNUSED;
-		}
-		if(i>0)
-		{
-			for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
-		    {
-		    	if(p->state == RUNNABLE)
-		    	{
-		    		if(ticks - p->arrival_time - p->time_spent > max_time_in_a_queue)
-		    		{
-						for(p2 = ptable.proc[i-1]; p2 < &ptable.proc[i-1][NPROC]; p2++)
-						{
-							if(p2->state == UNUSED)
-							{
-								break;
-							}
-						}
-						*p2 = *p;
-						p2->current_queue--;
-						p2->priority--;
-						if(p2->priority<0)
-						{
-							p2->priority=0;
-						}
-						p2->arrival_time = ticks;
-						p2->time_spent = 0;
-						p->pid = 0;
-		        p->parent = 0;
-		        p->name[0] = 0;
-		        p->killed = 0;
-		        p->kstack = 0;
-						p->state = UNUSED;
-		    		}
-		    	}
-		    }
-		}
 	}
   #endif
   #endif

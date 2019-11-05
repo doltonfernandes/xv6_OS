@@ -3,8 +3,12 @@
 
 int main(int argc, char *argv[])
 {
-	sleep(100);
-	printf(1,"Hello100\n");
+	for(int i=0;i<1e8;i++)
+	{
+		volatile int x = 1;
+		x++;
+	}
+	printf(1,"Hello-slow\n");
 	exit();
 	return 0;
 }

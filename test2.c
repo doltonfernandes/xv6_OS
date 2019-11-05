@@ -3,8 +3,12 @@
 
 int main(int argc, char *argv[])
 {
-	sleep(50);
-	printf(1,"Hello50\n");
+	for(int i=0;i<1e4;i++)
+	{
+		volatile int x = 1;
+		x++;
+	}
+	printf(1,"Hello-fast\n");
 	exit();
 	return 0;
 }

@@ -13,10 +13,15 @@ for i in range(3):
 maxil=-1
 maxir=-1
 
+mapp = {}
+mapp[5] = 0
+mapp[7] = 1
+mapp[8] = 2
+
 for i in inp:
 	j = i.split(" ")
-	graph[int(j[0])-3][0].append(int(j[1]));
-	graph[int(j[0])-3][1].append(int(j[2]));
+	graph[mapp[int(j[0])]][0].append(int(j[1]));
+	graph[mapp[int(j[0])]][1].append(int(j[2]));
 	maxil=max(maxil,int(j[1]))
 	maxir=max(maxir,int(j[2]))
 
