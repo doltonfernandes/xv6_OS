@@ -353,6 +353,7 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     struct proc *p;
+
   #ifdef DEFAULT
 
     for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
@@ -363,6 +364,7 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -382,7 +384,7 @@ scheduler(void)
     struct proc *p2;
 
     // Find process with least creation time
-
+    p2 = 0;
     for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
     {
       if(p->state == RUNNABLE)
@@ -394,21 +396,23 @@ scheduler(void)
         }
         process_found=1;
       }
-
     }
     if(!process_found)
     {
       goto there2;
     }
-    p2->num_run++;
-    c->proc = p2;
-    switchuvm(p2);
-    p2->state = RUNNING;
+    while(p2->state == RUNNABLE)
+    {
+      c->proc = p2;
+      switchuvm(p2);
+      p2->state = RUNNING;
+      p2->num_run++;
 
-    swtch(&(c->scheduler), p2->context);
-    switchkvm();
+      swtch(&(c->scheduler), p2->context);
+      switchkvm();
 
-    c->proc = 0;
+      c->proc = 0;
+    }
     there2:
   #else
   #ifdef PBS
@@ -527,10 +531,10 @@ scheduler(void)
 						p2->arrival_time = ticks;
 						p2->time_spent = 0;
 						p->pid = 0;
-				        p->parent = 0;
-				        p->name[0] = 0;
-				        p->killed = 0;
-				        p->kstack = 0;
+		        p->parent = 0;
+		        p->name[0] = 0;
+		        p->killed = 0;
+		        p->kstack = 0;
 						p->state = UNUSED;
 		    		}
 		    	}
@@ -577,10 +581,12 @@ sched(void)
 void
 yield(void)
 {
+  #ifndef FCFS
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
   sched();
   release(&ptable.lock);
+  #endif
 }
 
 // A fork child's very first scheduling by scheduler()

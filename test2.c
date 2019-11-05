@@ -3,8 +3,8 @@
 
 int main(int argc, char *argv[])
 {
-	sleep(100);
-	printf(1,"Hello100\n");
+	sleep(50);
+	printf(1,"Hello50\n");
 	exit();
 	return 0;
 }
