@@ -20,6 +20,8 @@ mapp[8] = 2
 
 for i in inp:
 	j = i.split(" ")
+	if (int(j[0])!=5 and int(j[0])!=8 and int(j[0])!=7) or len(j)!=3:
+		continue;
 	graph[mapp[int(j[0])]][0].append(int(j[1]));
 	graph[mapp[int(j[0])]][1].append(int(j[2]));
 	maxil=max(maxil,int(j[1]))

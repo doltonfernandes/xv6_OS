@@ -34,7 +34,7 @@ idtinit(void)
 
 int get_time(int x)
 {
-  int onetick = 2;
+  int onetick = 1;
   while(x--)
   {
     onetick*=2;
