@@ -10,7 +10,7 @@
 
 struct {
   struct spinlock lock;
-  struct proc proc[5][NPROC];
+  struct proc proc[NPROC];
 } ptable;
 
 static struct proc *initproc;
@@ -79,7 +79,7 @@ allocproc(void)
 
   acquire(&ptable.lock);
 
-  for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   	
     if(p->state == UNUSED)
       goto found;
@@ -92,7 +92,7 @@ found:
   p->pid = nextpid++;
 
   p->ctime = p->arrival_time = ticks;
-  p->rtime = p->etime = p->time_spent = p->num_run = 0;
+  p->rtime = p->etime = p->time_spent = p->num_run = p->cont_time = 0;
   p->current_queue = 1;
   for(int i=0;i<5;i++)
   {
@@ -266,11 +266,7 @@ exit(void)
   wakeup1(curproc->parent);
 
   // Pass abandoned children to init.
-  int i=0;
-  #ifdef MLFQ
-  for(;i<5;i++)
-  #endif
-  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
       p->parent = initproc;
       if(p->state == ZOMBIE)
@@ -297,11 +293,7 @@ wait(void)
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
-    int i=0;
-    #ifdef MLFQ
-    for(;i<5;i++)
-    #endif
-    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
       havekids = 1;
@@ -332,6 +324,21 @@ wait(void)
   }
 }
 
+void copyitup(struct proc *x)
+{
+	x->current_queue--;
+	x->arrival_time = ticks;
+	x->time_spent = 0;
+}
+
+void copyitdown(struct proc *x)
+{
+	x->current_queue++;
+	x->arrival_time = ticks;
+	x->time_spent = 0;
+}
+
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -356,7 +363,7 @@ scheduler(void)
 
   #ifdef DEFAULT
 
-    for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if(p->state != RUNNABLE)
         continue;
@@ -380,47 +387,57 @@ scheduler(void)
 
   #else
   #ifdef FCFS
-    int mini=1e9,process_found=0;
-    struct proc *p2;
-
-    // Find process with least creation time
-    p2 = 0;
-    for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
-      if(p->state == RUNNABLE)
-      {
-        if(mini>p->ctime)
-        {
-          mini=p->ctime;
-          p2=p;
-        }
-        process_found=1;
-      }
-    }
-    if(!process_found)
-    {
-      goto there2;
-    }
-    while(p2->state == RUNNABLE)
-    {
-      c->proc = p2;
-      switchuvm(p2);
-      p2->state = RUNNING;
-      p2->num_run++;
+	    struct proc *min_proc = 0;
 
-      swtch(&(c->scheduler), p2->context);
-      switchkvm();
+	    if(p->state != RUNNABLE)
+	      continue;
 
-      c->proc = 0;
-    }
-    there2:
+	    if(p->pid > 1)
+	    {
+	      if (min_proc != 0)
+	      {
+	        if(p->ctime < min_proc->ctime)
+	        {
+	          min_proc = p;
+	        }
+	      }
+	      else
+	      {
+	        min_proc = p;
+	      }
+	    }
+
+	    if(min_proc != 0 && min_proc->state == RUNNABLE)
+	    {
+	        p = min_proc;
+	    }
+
+	    if(p!=0)
+	    {
+	  	  while(p->state == RUNNABLE)
+	  	  {
+		      c->proc = p;
+		      switchuvm(p);
+		      p->state = RUNNING;
+		      p->num_run++;
+
+		      swtch(&(c->scheduler), p->context);
+		      switchkvm();
+
+		      c->proc = 0;
+	  	  }
+	    }
+	}
   #else
   #ifdef PBS
+
     int mini=1e9;
 
     // Find process with highest priority
 
-    for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if(p->state == RUNNABLE)
       {
@@ -430,7 +447,7 @@ scheduler(void)
         }
       }
     }
-    for(p = ptable.proc[0]; p < &ptable.proc[0][NPROC]; p++)
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if(p->state == RUNNABLE && p->priority == mini)
       {
@@ -445,107 +462,89 @@ scheduler(void)
 		c->proc = 0;
       }
     }
+
   #else
   #ifdef MLFQ
 
-    int onetick=50;
-    int max_time_in_a_queue = 200;
-    for(int i=0;i<5;i++,onetick*=2)
+    int onetick = 2;
+    int max_time_in_a_queue[] = {0,200,200,200,200};
+    for(int i=0;i<4;i++,onetick*=2)
     {
-    	int mini=1e9;
-
-	    // Find process with highest priority
-
-	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+    	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
 	    {
-	    	if(p->state == RUNNABLE && ticks - p->arrival_time - p->time_spent > max_time_in_a_queue && i>0)
-	      	{
-	      		struct proc *p3;
-	      		int found = 0;
-			    for(p3 = ptable.proc[i-1]; p3 < &ptable.proc[i-1][NPROC]; p3++)
-			    {
-			    	if(p3->state == UNUSED)
-			    	{
-			    		found = 1;
-			    		break;
-			    	}
-			    }
-			    if(!found)
-			    {
-			    	continue;
-			    }
-  			    *p3 = *p;
-  			    p3->arrival_time = ticks;
-      			p3->time_spent = 0;
-      			p3->current_queue--;
-      			if(p3->priority > 0)
-      			{
-      				p3->priority--;
-      			}
-      			p->pid = 0;
-		        p->parent = 0;
-		        p->name[0] = 0;
-		        p->killed = 0;
-		        p->kstack = 0;
-		    		p->state = UNUSED;
-	      	}
-	      	else
-	      	{
-		      if(p->state == RUNNABLE && (p->time_spent < onetick || i==4))
+		    struct proc *min_proc = 0;
+
+		    if(p->state != RUNNABLE || p->current_queue != i+1)
+		      continue;
+
+		    if(p->pid > 1)
+		    {
+		      if (min_proc != 0)
 		      {
-		        if(mini>p->priority)
+		        if(p->ctime < min_proc->ctime)
 		        {
-		          mini=p->priority;
+		          min_proc = p;
 		        }
 		      }
 		      else
 		      {
-		      	if(p->state == RUNNABLE && i<4 && p->time_spent >= onetick)
-		      	{
-		      		struct proc *p3;
-		      		int found = 0;
-				    for(p3 = ptable.proc[i+1]; p3 < &ptable.proc[i+1][NPROC]; p3++)
-				    {
-				    	if(p3->state == UNUSED)
-				    	{
-				    		found = 1;
-				    		break;
-				    	}
-				    }
-				    if(!found)
-				    {
-				    	continue;
-				    }
-  				    *p3 = *p;
-  				    p3->arrival_time = ticks;
-    					p3->time_spent = 0;
-    					p3->current_queue++;
-    					p->pid = 0;
-			        p->parent = 0;
-			        p->name[0] = 0;
-			        p->killed = 0;
-			        p->kstack = 0;
-				    	p->state = UNUSED;
-		      	}
+		        min_proc = p;
 		      }
-			}
-	    }
-	    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
-	    {
-	    	if(p->state == RUNNABLE && mini == p->priority)
-	    	{
-			    p->num_run++;
-				c->proc = p;
-				switchuvm(p);
-				p->state = RUNNING;
+		    }
 
-				swtch(&(c->scheduler),p->context);
-				switchkvm();
+		    if(min_proc != 0 && min_proc->state == RUNNABLE)
+		    {
+		        p = min_proc;
+		    }
 
-				c->proc = 0;
-	    	}
-	    }
+		    if(p!=0 && p->state == RUNNABLE)
+		    {
+		      p->cont_time = 0;
+		      c->proc = p;
+		      switchuvm(p);
+		      p->state = RUNNING;
+		      p->num_run++;
+
+		      swtch(&(c->scheduler), p->context);
+		      switchkvm();
+
+		      c->proc = 0;
+
+		      if(p->cont_time >= onetick)
+		      {
+		      	copyitdown(p);
+		      }
+		    }
+		}
 	}
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if(p->state != RUNNABLE || p->current_queue != 5)
+        continue;
+
+      c->proc = p;
+      p->cont_time = 0;
+      switchuvm(p);
+      p->state = RUNNING;
+      p->num_run++;
+
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+
+      c->proc = 0;
+    }
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+    	if(p->state == UNUSED || p->current_queue == 1)
+    	{
+    		continue;
+    	}
+    	if(ticks - p->arrival_time - p->time_spent >= max_time_in_a_queue[p->current_queue-1])
+    	{
+    		copyitup(p);
+    	}
+    }
+
   #endif
   #endif
   #endif
@@ -662,11 +661,7 @@ wakeup1(void *chan)
 {
   struct proc *p;
 
-  int i=0;
-  #ifdef MLFQ
-  for(;i<5;i++)
-  #endif
-  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
       p->state = RUNNABLE;
 }
@@ -689,11 +684,7 @@ kill(int pid)
   struct proc *p;
 
   acquire(&ptable.lock);
-  int i=0;
-  #ifdef MLFQ
-  for(;i<5;i++)
-  #endif
-  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
@@ -727,11 +718,7 @@ procdump(void)
   char *state;
   uint pc[10];
 
-  int j=0;
-  #ifdef MLFQ
-  for(;j<5;j++)
-  #endif
-  for(p = ptable.proc[j]; p < &ptable.proc[j][NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
@@ -759,11 +746,7 @@ waitx(int *wtime,int *rtime)
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
-    int i=0;
-	#ifdef MLFQ
-	for(;i<5;i++)
-	#endif
-	for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++){
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
       havekids = 1;
@@ -802,11 +785,8 @@ int
 getpinfo(struct proc_stat *x,int pid)
 {
   struct proc *p=0;
-  int i = 0,f=1;
-  #ifdef MLFQ
-  for(;i<5 && f;i++)
-  #endif
-  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+  int f=1;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
   	if(p->state != UNUSED)
     if(pid == p->pid)
@@ -853,36 +833,33 @@ void update_runtime()
 {
   struct proc *p;
   acquire(&ptable.lock);
-  int i=0;
-  #ifdef MLFQ
-  for(;i<5;i++)
-  #endif
-  for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
     if(p->state == RUNNING)
     {
     	p->rtime++;
     	p->time_spent++;
+    	p->cont_time++;
     	p->ticks[p->current_queue-1]++;
     }
   }
 
   // // For Bonus
 
-  if(ticks%50==0)
-  {
-    i = 0;
-    #ifdef MLFQ
-    for(;i<5;i++)
-    #endif
-    for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
-    {
-      if(p->state==RUNNING)
-      {
-        cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
-        // cprintf("%d %d\n",p->arrival_time,p->time_spent);
-      }
-    }
-  }
+  // if(ticks%1==0)
+  // {
+  //   i = 0;
+  //   #ifdef MLFQ
+  //   for(;i<5;i++)
+  //   #endif
+  //   for(p = ptable.proc[i]; p < &ptable.proc[i][NPROC]; p++)
+  //   {
+  //     if(p->state==RUNNING)
+  //     {
+  //       cprintf("( %d %d )\n",p->pid,p->current_queue);
+  //       // cprintf("%d %d\n",p->arrival_time,p->time_spent);
+  //     }
+  //   }
+  // }
   release(&ptable.lock);
 }

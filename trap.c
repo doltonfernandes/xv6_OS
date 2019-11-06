@@ -32,14 +32,14 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
-int getvalue(int x)
+int get_time(int x)
 {
-  int l=1;
-  for(int i=0;i<x;i++)
+  int onetick = 2;
+  while(x--)
   {
-    l*=2;
+    onetick*=2;
   }
-  return l*100;
+  return onetick;
 }
 
 //PAGEBREAK: 41
@@ -113,8 +113,14 @@ trap(struct trapframe *tf)
 
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
-  if(myproc() && myproc()->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER)
+  int f=0;
+  #ifdef MLFQ
+    f=1;
+  #endif
+  if(myproc() && myproc()->state == RUNNING && (tf->trapno == T_IRQ0+IRQ_TIMER || (myproc()->cont_time >= get_time(myproc()->current_queue-1) && f)))
+  {
     yield();
+  }
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
