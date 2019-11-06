@@ -451,15 +451,15 @@ scheduler(void)
     {
       if(p->state == RUNNABLE && p->priority == mini)
       {
-	    p->num_run++;
-		c->proc = p;
-		switchuvm(p);
-		p->state = RUNNING;
+  	    p->num_run++;
+    		c->proc = p;
+    		switchuvm(p);
+    		p->state = RUNNING;
 
-		swtch(&(c->scheduler), p->context);
-		switchkvm();
+    		swtch(&(c->scheduler), p->context);
+    		switchkvm();
 
-		c->proc = 0;
+    		c->proc = 0;
       }
     }
 
@@ -512,7 +512,6 @@ scheduler(void)
 
 		      if(p->cont_time >= onetick)
 		      {
-		      cprintf("%d %d\n",p->cont_time,onetick);
 		      	copyitdown(p);
 		      }
 		    }
@@ -847,17 +846,17 @@ void update_runtime()
 
   // // For Bonus
 
-  if(ticks%50==0)
-  {
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    {
-      if(p->state==RUNNING)
-      {
-      	cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
-        // cprintf("( %d %d )\n",p->pid,p->current_queue);
-        // cprintf("%d %d\n",p->arrival_time,p->time_spent);
-      }
-    }
-  }
+  // if(ticks%50==0)
+  // {
+  //   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  //   {
+  //     if(p->state==RUNNING)
+  //     {
+  //     	cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
+  //       // cprintf("( %d %d )\n",p->pid,p->current_queue);
+  //       // cprintf("%d %d\n",p->arrival_time,p->time_spent);
+  //     }
+  //   }
+  // }
   release(&ptable.lock);
 }
