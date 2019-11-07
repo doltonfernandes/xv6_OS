@@ -416,18 +416,15 @@ scheduler(void)
 
 	    if(p!=0)
 	    {
-	  	  while(p->state == RUNNABLE)
-	  	  {
-		      c->proc = p;
-		      switchuvm(p);
-		      p->state = RUNNING;
-		      p->num_run++;
+	      c->proc = p;
+	      switchuvm(p);
+	      p->state = RUNNING;
+	      p->num_run++;
 
-		      swtch(&(c->scheduler), p->context);
-		      switchkvm();
+	      swtch(&(c->scheduler), p->context);
+	      switchkvm();
 
-		      c->proc = 0;
-	  	  }
+	      c->proc = 0;
 	    }
 	}
   #else
