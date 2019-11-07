@@ -117,7 +117,13 @@ trap(struct trapframe *tf)
   #ifdef MLFQ
     f=1;
   #endif
-  if(myproc() && myproc()->state == RUNNING && (tf->trapno == T_IRQ0+IRQ_TIMER || (myproc()->cont_time >= get_time(myproc()->current_queue-1) && f==1)))
+  #ifdef PBS
+    if(myproc() && myproc()->state == RUNNING)
+    {
+    	f=check_priority(myproc()->priority);
+    }
+  #endif
+  if(myproc() && myproc()->state == RUNNING && (tf->trapno == T_IRQ0+IRQ_TIMER || (myproc()->cont_time >= get_time(myproc()->current_queue-1) && f==1) || f==2))
   {
     yield();
   }

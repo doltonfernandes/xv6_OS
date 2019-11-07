@@ -126,6 +126,7 @@ int            	waitx(int*,int*);
 int            	set_priority(int);
 void			update_runtime(void);
 int 			getpinfo(struct proc_stat*,int);
+int 			check_priority(int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

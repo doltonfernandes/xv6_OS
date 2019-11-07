@@ -890,3 +890,19 @@ void update_runtime()
   // }
   release(&ptable.lock);
 }
+
+int check_priority(int x)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state == RUNNABLE && p->priority < x)
+    {
+      release(&ptable.lock);
+      return 2;
+    }
+  }
+  release(&ptable.lock);
+  return 0;
+}
