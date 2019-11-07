@@ -497,7 +497,7 @@ scheduler(void)
   #ifdef MLFQ
 
     int onetick = ONETIK;
-    int max_time_in_a_queue[] = {0,200,100,50,25};
+    int max_time_in_a_queue[] = {0,25,50,75,100};
     for(int i=0;i<4;i++,onetick*=2)
     {
     	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -876,18 +876,18 @@ void update_runtime()
 
   // // For Bonus
 
-  // if(ticks%ONETIK==0)
-  // {
-  //   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  //   {
-  //     if(p->state==RUNNING)
-  //     {
-  //     	cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
-  //       // cprintf("( %d %d )\n",p->pid,p->current_queue);
-  //       // cprintf("%d %d\n",p->arrival_time,p->time_spent);
-  //     }
-  //   }
-  // }
+  if(ticks%ONETIK==0)
+  {
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if(p->state==RUNNING)
+      {
+      	cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
+        // cprintf("( %d %d )\n",p->pid,p->current_queue);
+        // cprintf("%d %d\n",p->arrival_time,p->time_spent);
+      }
+    }
+  }
   release(&ptable.lock);
 }
 
