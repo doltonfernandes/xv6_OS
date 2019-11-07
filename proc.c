@@ -66,6 +66,28 @@ myproc(void) {
   return p;
 }
 
+void swap(struct proc *x,struct proc *y)
+{
+	struct proc tmp;
+	tmp = *x;
+	*x = *y;
+	*y = tmp;
+}
+
+void arrange_queue()
+{
+	struct proc *x,*y;
+	x = y = ptable.proc;
+	for(;y < &ptable.proc[NPROC];y++)
+	{
+		if(y->state != UNUSED)
+		{
+			swap(x,y);
+			x++;
+		}
+	}
+}
+
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -77,7 +99,16 @@ allocproc(void)
   struct proc *p;
   char *sp;
 
+
   acquire(&ptable.lock);
+
+  // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){cprintf("%d ",p->state);}
+  // 	cprintf("\n");
+
+  // arrange_queue();
+  
+  // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){cprintf("%d ",p->state);}
+  // 	cprintf("\n");
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   	
