@@ -876,18 +876,18 @@ void update_runtime()
 
   // // For Bonus
 
-  if(ticks%ONETIK==0)
-  {
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    {
-      if(p->state==RUNNING)
-      {
-      	cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
-        // cprintf("( %d %d )\n",p->pid,p->current_queue);
-        // cprintf("%d %d\n",p->arrival_time,p->time_spent);
-      }
-    }
-  }
+  // if(ticks%ONETIK==0)
+  // {
+  //   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  //   {
+  //     if(p->state==RUNNING)
+  //     {
+  //     	cprintf("%d %d %d\n",p->pid,ticks,p->current_queue);
+  //       // cprintf("( %d %d )\n",p->pid,p->current_queue);
+  //       // cprintf("%d %d\n",p->arrival_time,p->time_spent);
+  //     }
+  //   }
+  // }
   release(&ptable.lock);
 }
 
