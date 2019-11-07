@@ -1,20 +1,27 @@
 #include "types.h"
 #include "user.h"
 
-void dosomething()
+void dosomething(int x)
 {
-	float ans = 1.0 , x = 1.267643196469;
-	int f = 50;
-	while(f--)
+	if(x<1)
 	{
-		ans*=x;
+		return ;
 	}
+	dosomething(x-1);
+	dosomething(x-2);
 }
 
 int 
 main(int argc, char * argv[])
 {
-	while(1)
-	dosomething();
-    exit();
+	int pid = fork();
+	if(pid == 0)
+	{
+		dosomething(40);
+		exit();
+	}
+	int x,y;
+	waitx(&x,&y);
+	printf(1,"wt = %d , rt = %d\n",x,y);
+	exit();
 }

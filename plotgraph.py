@@ -22,7 +22,7 @@ offset = 550
 
 for i in inp:
 	j = i.split(" ")
-	if (int(j[0])!=5 and int(j[0])!=8 and int(j[0])!=7) or len(j)!=3 or int(j[1])%25 != 0:
+	if (int(j[0])!=5 and int(j[0])!=8 and int(j[0])!=7) or len(j)!=3 or int(j[1])%50 != 0:
 		continue;
 	graph[mapp[int(j[0])]][0].append(int(j[1])-offset);
 	graph[mapp[int(j[0])]][1].append(int(j[2]));
@@ -46,4 +46,4 @@ plt.plot(graph[1][0], graph[1][1], marker='^', linewidth=2, markersize=10,label 
 plt.plot(graph[2][0], graph[2][1], marker='s', linewidth=2, markersize=10,label = 'Process 3')
 plt.plot([maxil],[maxir])
 plt.legend(loc='best')
-plt.show()
+plt.savefig("graph.png")

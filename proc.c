@@ -102,14 +102,6 @@ allocproc(void)
 
   acquire(&ptable.lock);
 
-  // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){cprintf("%d ",p->state);}
-  // 	cprintf("\n");
-
-  // arrange_queue();
-  
-  // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){cprintf("%d ",p->state);}
-  // 	cprintf("\n");
-
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   	
     if(p->state == UNUSED)
@@ -394,6 +386,8 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     struct proc *p;
+
+	// arrange_queue();
 
   #ifdef DEFAULT
 
