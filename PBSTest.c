@@ -19,21 +19,22 @@ main(int argc, char * argv[])
         int pid2;
         if((pid2 = fork())==0)
         {
-            dosomething(atoi(argv[1]));
+        	set_priority(atoi(argv[1]));
+            dosomething(60);
             printf(1, "Exit 1\n");
         }
         else
         {
-            dosomething(atoi(argv[2]));
+        	set_priority(atoi(argv[2]));
+            dosomething(60);
             printf(1, "Exit 2\n");
-            wait();
         }
     }
     else
     {
-        dosomething(atoi(argv[3]));
+    	set_priority(atoi(argv[3]));
+        dosomething(60);
         printf(1, "Exit 3\n");
-        wait();
     }
     exit();
 }

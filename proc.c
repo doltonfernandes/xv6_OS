@@ -130,7 +130,9 @@ found:
   	p->ticks[i]=0;
   }
 
-  set_priority(60);
+  #ifdef PBS
+	set_priority(60);
+  #endif
 
   release(&ptable.lock);
 
@@ -479,7 +481,7 @@ scheduler(void)
     {
       if(p->state == RUNNABLE && p->priority == mini)
       {
-  	    p->num_run++;
+  	    	p->num_run++;
     		c->proc = p;
     		switchuvm(p);
     		p->state = RUNNING;
@@ -494,8 +496,8 @@ scheduler(void)
   #else
   #ifdef MLFQ
 
-    int onetick = 1;
-    int max_time_in_a_queue[] = {0,200,200,200,200};
+    int onetick = ONETIK;
+    int max_time_in_a_queue[] = {0,200,100,50,25};
     for(int i=0;i<4;i++,onetick*=2)
     {
     	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -874,7 +876,7 @@ void update_runtime()
 
   // // For Bonus
 
-  // if(ticks%50==0)
+  // if(ticks%ONETIK==0)
   // {
   //   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   //   {
