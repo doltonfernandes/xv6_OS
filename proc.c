@@ -74,20 +74,6 @@ void swap(struct proc *x,struct proc *y)
 	*y = tmp;
 }
 
-void arrange_queue()
-{
-	struct proc *x,*y;
-	x = y = ptable.proc;
-	for(;y < &ptable.proc[NPROC];y++)
-	{
-		if(y->state != UNUSED)
-		{
-			swap(x,y);
-			x++;
-		}
-	}
-}
-
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -386,8 +372,6 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     struct proc *p;
-
-	// arrange_queue();
 
   #ifdef DEFAULT
 
@@ -845,7 +829,7 @@ int
 set_priority(int x)
 {
   struct proc *curproc=myproc();
-  if(curproc == 0)
+  if(curproc == 0 || x < 0 || x > 100)
   {
   	return -1;
   }
